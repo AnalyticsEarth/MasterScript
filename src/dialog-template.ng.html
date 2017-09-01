@@ -1,0 +1,18 @@
+<lui-dialog class="wizarddialog">
+	<lui-dialog-header>
+		<lui-dialog-title>MasterScript</lui-dialog-title>
+	</lui-dialog-header>
+	<lui-dialog-body class="wizarddialogbody"  id="scrollBody">
+		<table>
+			<tr ng-repeat="row in input.masterScriptList.rows">
+      	<td ng-repeat="cell in row.cells"> {{cell.qText}} </td>
+      </tr>
+		</table>
+		<button class="lui-button  lui-dialog__footer-button" ng-click="process();">Create Master Items</button>
+	</lui-dialog-body>
+	<lui-dialog-footer>
+		<div class="warningLeft">{{input.warningMessage}}</div>
+
+		<button class="lui-button  lui-dialog__footer-button" ng-click="close();">Close</button>
+	</lui-dialog-footer>
+</lui-dialog>

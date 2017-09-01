@@ -1,0 +1,15 @@
+{
+	"name": "MasterScript",
+	"description": "Create Master Items from a table in your data model",
+	"type": "visualization",
+	"version": "1.0.0",
+	"icon": "effects",
+	"author": "Steven Pressland",
+	"homepage": "https://github.com/AnalyticsEarth/MasterScript",
+	"keywords": "qlik-sense, visualization, Master Items",
+	"license": "",
+	"repository": "",
+	"dependencies": {
+		"qlik-sense": ">=3.0.x"
+	}
+}
