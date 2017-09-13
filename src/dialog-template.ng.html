@@ -1,17 +1,34 @@
 <lui-dialog class="wizarddialog">
 	<lui-dialog-header>
-		<lui-dialog-title>MasterScript</lui-dialog-title>
+		<button class="lui-button  lui-dialog__footer-button topButton" ng-click="process();">Import Master Items</button>
+		<lui-dialog-title class="topTitle">MasterScript</lui-dialog-title>
 	</lui-dialog-header>
-	<lui-dialog-body class="wizarddialogbody"  id="scrollBody">
-		<table>
-			<tr ng-repeat="row in input.masterScriptList.rows">
-      	<td ng-repeat="cell in row.cells"> {{cell.qText}} </td>
-      </tr>
-		</table>
-		<button class="lui-button  lui-dialog__footer-button" ng-click="process();">Create Master Items</button>
+	<lui-dialog-body  id="scrollBody">
+		<ul class="lui-list">
+  		<li class="lui-list__header">
+    <span class="lui-list__text">
+			<span class="column1">Title</span>
+			<span class="column2">Type</span>
+			<span class="column3">Expression</span>
+			<span class="column4">Color</span>
+			<span class="column5">Status</span>
+		</span>
+  </li>
+  <li ng-repeat="row in input.masterScriptListInternal" class="lui-list__item rowHeight">
+    <span class="lui-list__text">
+			<div class="column1">{{row.displayName}}</div>
+			<div class="column2">{{row.rowDisplayType}}</div>
+			<div class="column3">
+				<div ng-repeat="field in row.fields" class="fieldoval">{{field}}</div>
+			</div>
+			<div class="column4"><div class="colorDisc" style="background-color:{{row.color}}"></div></div>
+			<div class="column5">{{row.status}} {{row.processed}}</div>
+		</span>
+  </li>
+</ul>
 	</lui-dialog-body>
 	<lui-dialog-footer>
-		<div class="warningLeft">{{input.warningMessage}}</div>
+		<div class="warningLeft">The MasterScript table will always overwrite any manual changes to master items</div>
 
 		<button class="lui-button  lui-dialog__footer-button" ng-click="close();">Close</button>
 	</lui-dialog-footer>

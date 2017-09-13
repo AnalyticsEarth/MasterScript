@@ -15,30 +15,7 @@ define( [], function () {
 		}
 	};
 
-	var aaiSettings = {
-		component: "expandable-items",
-		label: "MasterScript",
-		items: {
-			header: {
-				type: "items",
-				label: "Settings",
-				items: {
-					beta: {
-						ref: "props.includeBeta",
-						label: "Include Beta Functions",
-						type: "boolean",
-						defaultValue: false
-					},
-					allFields: {
-						ref: "props.allFields",
-						label: "Show All Fields",
-						type: "boolean",
-						defaultValue: false
-					}
-				}
-			}
-		}
-	};
+
 
 	// *****************************************************************************
 	// Main properties panel definition
@@ -48,8 +25,7 @@ define( [], function () {
 		type: "items",
 		component: "accordion",
 		items: {
-			appearance: appearanceSection,
-			settings: aaiSettings
+			appearance: appearanceSection
 		}
 	};
 });

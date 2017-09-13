@@ -17,9 +17,27 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 		},
 		template: template,
 		definition: definition,
+		paint: function ($element,layout){
+
+			layout.navmode = qlik.navigation.getMode();
+			console.log($element);
+
+			if(layout.navmode == 'analysis'){
+				$("#launchButton").removeClass("hidden").addClass("hidden");
+			}else{
+				$("#launchButton").removeClass("hidden");
+			}
+
+		},
 		controller: ['$scope','luiDialog', function ( $scope, luiDialog) {
-			$scope.layout = $scope.$parent.layout;
+
+
 			console.log($scope);
+
+			$scope.processButton = function($event){
+
+				$scope.openWizard();
+			};
 
 
 			/* This function opens the dialog window when the openWizard() function
@@ -40,35 +58,16 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 						buttonState: 0,
 						buttonTitle: 'Preview Master Items',
 						buttonIcon: 'view',
-						warningMessage: ''
+						warningMessage: '',
+						masterScriptListInternal: []
 					},
 					controller: ['$scope', function( $scope ) {
 						console.log($scope);
 
 						/* Get current Qlik App and field list */
 						var app = qlik.currApp(this);
-						app.getList("FieldList", function(reply){
-							$scope.input.fieldList = reply;
-							console.log(reply);
-						});
 
-						/* This utility function is called when conversion a written JSON
-						path from a config template and returnin the required object
-						in the template */
-						$scope.objectByString = function(o, s) {
-							s = s.replace(/\[(\w+)\]/g, '.$1');
-							s = s.replace(/^\./, '');
-							var a = s.split('.');
-							for (var i = 0, n = a.length; i < n; ++i) {
-								var k = a[i];
-								if (k in o) {
-									o = o[k];
-								} else {
-									return;
-								}
-							}
-							return o;
-						};
+
 
 						/* Set the default tab and create the function which will allow for
 						the tab to be changed in code */
@@ -80,26 +79,133 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 
 						//$scope.make_tab_active(1);
 
-						$scope.input.masterScriptList = app.createTable(["_MasterItemType",	"_MasterItemName",	"_MasterItemDescription",	"_MasterItemColor", "_MasterItemTags",	"_MasterItemExpression1",	"_MasterItemExpression2",	"_MasterItemExpression3",	"_MasterItemExpression4",	"_MasterItemExpression5"], [],{rows:200});
+
+						$scope.updateDimList = function(){
+							var list = {
+								qInfo: {
+	        				qId: "",
+	        				qType: "DimensionList"
+	      				},
+	      				qDimensionListDef: {
+									qType: 'dimension',
+	        				qData: {grouping: '/qDim/qGrouping'}
+	      				}
+							};
+
+							$scope.input.appModel.createSessionObject(list).then((data) => {
+								$scope.input.dimListObj = data;
+								$scope.refreshDimList(data);
+							});
+						};
+
+						$scope.refreshDimList = function(dimListObj){
+							dimListObj.getLayout().then((dataLayout) => {
+								//console.log("Refresh Dim List");
+								//console.log(dataLayout);
+								$scope.input.dimList = dataLayout.qDimensionList.qItems;
+								$scope.processItems();
+
+							});
+						};
+
+						$scope.updateMesList = function(){
+							var list = {
+								qInfo: {
+	        				qId: "",
+	        				qType: "MeasureList"
+	      				},
+	      				qMeasureListDef: {
+									qType: 'measure',
+	        				qData: {grouping: '/qMeasure/qGrouping'}
+	      				}
+							};
+
+							$scope.input.appModel.createSessionObject(list).then((data) => {
+								$scope.input.mesListObj = data;
+								$scope.refreshMesList(data);
+							});
+						};
+
+						$scope.refreshMesList = function(mesListObj){
+							mesListObj.getLayout().then((dataLayout) => {
+								//console.log("Refresh Dim List");
+								//console.log(dataLayout);
+								$scope.input.mesList = dataLayout.qMeasureList.qItems;
+								$scope.processItems();
+							});
+						};
+
+						$scope.updateDimList();
+						$scope.updateMesList();
+
+						//console.log("Session Object");
+						//console.log($scope.input.DimListObj);
+
+						$scope.input.masterScriptList = app.createTable([
+							"_MasterItemID",
+							"_MasterItemType",
+							"_MasterItemName",
+							"_MasterItemDescription",
+							"_MasterItemColor",
+							"_MasterItemTags",
+							"_MasterItemExpression1",
+							"_MasterItemExpression2",
+							"_MasterItemExpression3",
+							"_MasterItemExpression4",
+							"_MasterItemExpression5"]
+						, [],{rows:200});
+
+						var listener = function() {
+							$scope.processItems();
+		 				};
+		 				$scope.input.masterScriptList.OnData.bind( listener ); //bind the listener
+
+
 
 						$scope.process = function(){
-							console.log("Process Click");
-							$scope.processItems();
+							//console.log("Process Click");
+
+							$scope.createItems(true);
+
+						};
+
+						$scope.createItems = function(shouldCreate){
+							var p = [];
+							$scope.input.masterScriptListInternal.forEach(function(row) {
+    						//console.log(row);
+
+								if(row.rowType == "Dimension"){
+									var a = $scope.createDimension(row, shouldCreate);
+									p.push(a);
+								}
+								if(row.rowType == "Measure"){
+									var a = $scope.createMeasure(row, shouldCreate);
+									//console.log(a);
+									p.push(a);
+								}
+							});
+
+							Promise.all(p).then(values => {
+								$scope.refreshDimList($scope.input.dimListObj);
+								$scope.refreshMesList($scope.input.mesListObj);
+
+							});
+
 						};
 
 						$scope.processItems = function(){
 
 							var table = $scope.input.masterScriptList;
-												//_MasterItemExpression2	_MasterItemExpression3	_MasterItemExpression4	_MasterItemExpression5
 
+							var iDCol = table.getColByName('_MasterItemID');
 							var typeCol = table.getColByName('_MasterItemType');
 							var nameCol = table.getColByName('_MasterItemName');
 							var descCol = table.getColByName('_MasterItemDescription');
 							var colorCol = table.getColByName('_MasterItemColor');
 							var tagCol = table.getColByName('_MasterItemTags');
 
-							$scope.input.masterScriptList.rows.forEach(function(row) {
-    						console.log(row);
+							$scope.input.masterScriptList.rows.forEach(function(row, rowNum) {
+    						//console.log(row);
 
 								var fieldsList = [];
 
@@ -113,29 +219,102 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 								}
 
 								var tagsList = row.cells[tagCol].qText.split(";");
+								tagsList.push(row.cells[iDCol].qText);
+
+								var rowDisplay = row.cells[typeCol].qText;
+								if(fieldsList.length > 1 && rowDisplay == "Dimension"){
+									rowDisplay = "Drill-down Dimension"
+								}
+								var prevProcessed = 'P';
+								if(typeof $scope.input.masterScriptListInternal[rowNum] != 'undefined'){
+									prevProcessed = $scope.input.masterScriptListInternal[rowNum].processed;
+								}
 
 								var itemData = {
+									rowNumber:rowNum,
+									rowType: row.cells[typeCol].qText,
+									rowDisplayType: rowDisplay,
 									displayName: row.cells[nameCol].qText,
 									description: row.cells[descCol].qText,
 									color: row.cells[colorCol].qText,
 									fields: fieldsList,
-									tags: tagsList
+									tags: tagsList,
+									msId: row.cells[iDCol].qText,
+									status: "Pending",
+									processed: prevProcessed
 								};
 
-								if(row.dimensions[typeCol].qText == "Dimension"){
-									$scope.createDimension(itemData);
-								}
-								if(row.dimensions[typeCol].qText == "Measure"){
-									$scope.createMeasure(itemData);
+								$scope.input.masterScriptListInternal[rowNum] = itemData;
+								$scope.checkDim(itemData);
+								$scope.checkMes(itemData);
+
+							});
+
+							//console.log("Complete");
+							//console.log($scope.input.masterScriptListInternal);
+
+						};
+
+						$scope.checkDim = function(t){
+							var check = false;
+							$scope.input.dimList.forEach(function(dim){
+								//console.log(dim);
+
+								if(t.msId == dim.qMeta.masterScriptId){
+									console.log("Dim Already Exists: " + t.msId + " " + dim.qMeta.masterScriptId);
+									t.qId = dim.qInfo.qId;
+									check = true;
+									//console.log(t);
 								}
 							});
+							if(t.rowType == "Dimension"){
+								if(check){
+									t.status = "Exists";
+								}else{
+									t.status = "Not Created";
+								}
+							}
+							return check;
+						};
+
+						$scope.checkMes = function(t){
+							var check = false;
+							$scope.input.mesList.forEach(function(mes){
+								//console.log(dim);
+
+								if(t.msId == mes.qMeta.masterScriptId){
+									console.log("Measure Already Exists: " + t.msId + " " + mes.qMeta.masterScriptId);
+									t.qId = mes.qInfo.qId;
+									check = true;
+								}
+							});
+							if(t.rowType == "Measure"){
+								if(check){
+									t.status = "Exists";
+								}else{
+									t.status = "Not Created";
+								}
+							}
+
+							return check;
 						};
 
 
 						/* Create Dimension */
-						$scope.createDimension = function(t){
+						$scope.createDimension = function(t, shouldCreate){
 							var group = "N";
 							if(t.fields.length > 1) group = "H";
+
+							var colorBlock = {}
+
+							if(t.color != "-"){
+								colorBlock = {
+									baseColor: {
+										color: t.color,
+										index: -1
+									}
+								};
+							}
 							var dimJSON =
 							{
 								qInfo: {
@@ -146,27 +325,34 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 									qFieldDefs: t.fields,
 									qFieldLabels: t.fields,
 									title:t.displayName,
-									coloring: {
-										baseColor: {
-											color: t.color,
-											index: -1
-										}
-									}
+									coloring: colorBlock
 								},
 								qMetaDef: {
 									title:t.displayName,
 									description:t.description,
-									tags:t.tags
+									tags:t.tags,
+									masterScriptId:t.msId
 								}
 							};
 
-							return $scope.input.appModel.createDimension(dimJSON).then((data) => {
-
-							});
+							if($scope.checkDim(t)){
+								if(shouldCreate){
+									return $scope.input.appModel.getDimension(t.qId).then((data) => {
+										data.setProperties(dimJSON);
+										t.processed = "U";
+									 });
+								}
+							}else{
+								if(shouldCreate){
+									return $scope.input.appModel.createDimension(dimJSON).then((data) => {
+										t.processed = "C";
+									});
+								}
+							}
 						};
 
 						/* Create Measure */
-						$scope.createMeasure = function(t){
+						$scope.createMeasure = function(t, shouldCreate){
 							var mesJSON =
 							{
 								qInfo: {
@@ -188,60 +374,25 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 								qMetaDef: {
 									title:t.displayName,
 									description:t.description,
-									tags:t.tags
+									tags:t.tags,
+									masterScriptId:t.msId
 								}
 							};
 
-							return $scope.input.appModel.createMeasure(mesJSON).then((data) => {
-
-							});
-						};
-
-						/* Create Master Visualization */
-						$scope.createMasterViz = function(aeVizTemplate){
-							//console.log('Create Viz');
-							if(aeVizTemplate.type){
-								$.getJSON('../extensions/AAIExpressionBuilder/templates/' + aeVizTemplate.type + '.json', function(response){
-									var vizJSON = response;
-
-									vizJSON.qMetaDef.title = aeVizTemplate.displayTitle;
-									vizJSON.qMetaDef.description = aeVizTemplate.description;
-
-									aeVizTemplate.replacements.forEach(function(r){
-										$scope.input.idList.forEach(function(vid){
-											if(vid.templateId == r.template){
-												var obj = $scope.objectByString(vizJSON, r.path);
-												obj[r.key] = vid.qixId;
-											}
-										});
+							if($scope.checkMes(t)){
+								console.log("Updating: "+ t.qId);
+								return $scope.input.appModel.getMeasure(t.qId).then((data) => {
+									console.log("Updating Measure");
+									console.log(data);
+									data.setProperties(mesJSON);
+									t.processed = "U";
+								 });
+							}else{
+								if(shouldCreate){
+									return $scope.input.appModel.createMeasure(mesJSON).then((data) => {
+										t.processed = "C";
 									});
-									$scope.input.appModel.createObject(vizJSON).then((data) => {console.log('Create Viz'); console.log(data);});
-								});
-							}
-						};
-
-						/* Create Variable */
-						$scope.createVariable = function(variableTemplate){
-							//console.log('Create Variable');
-							if(variableTemplate.enabled){
-								var app = qlik.currApp(this);
-								app.variable.getContent(variableTemplate.name).then(
-								function(data){
-									//console.log('Check Variable');
-									//console.log(data);
-									variableTemplate.built = 'exists';
-								}, function(e){
-									//console.log('Variable does not exist, create variable');
-									app.variable.create({
-										qName : variableTemplate.name,
-										qDefinition : variableTemplate.definition,
-										qComment : variableTemplate.description
-									}).then((data) => {
-										//console.log('Created Variable');
-										//console.log(data);
-										variableTemplate.built = 'created';
-									});
-								});
+								}
 							}
 						};
 
