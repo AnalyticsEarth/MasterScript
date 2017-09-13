@@ -17,7 +17,7 @@ The metadata required by the extension must be in a pre-defined format, the easi
 
 The format is designed for ease of manual completion in a spreadsheet, hence the flat nature of the data structure.
 
-The fields have a "_" prefix so this can be combined with the ___set HidePrefix = '_'___ option
+The fields have a "_" prefix so this can be combined with the ___set HidePrefix = '\_'___ option
 
 ### The data format
 * _MasterItemID
