@@ -153,7 +153,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 							"_MasterItemExpression3",
 							"_MasterItemExpression4",
 							"_MasterItemExpression5"]
-						, [],{rows:200});
+						, [{qDef:{qLabel:"_KeyCount",qDef:"count(TOTAL <_MasterItemID> _MasterItemID)"}}],{rows:200});
 
 						var listener = function() {
 							$scope.processItems();
@@ -203,11 +203,23 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 							var descCol = table.getColByName('_MasterItemDescription');
 							var colorCol = table.getColByName('_MasterItemColor');
 							var tagCol = table.getColByName('_MasterItemTags');
+							var countCol = table.getColByName('_KeyCount');
 
 							$scope.input.masterScriptList.rows.forEach(function(row, rowNum) {
     						//console.log(row);
-
+								var error = false;
+								var errors = [];
 								var fieldsList = [];
+
+								if(row.cells[countCol].qNum > 1){
+									error = true;
+									errors.push("Duplicate _MasterItemID Found");
+								}
+
+								if(row.cells[countCol].qNum == 0){
+									error = true;
+									errors.push("MIssing _MasterItemID Value");
+								}
 
 								for(var i = 1; i <= 10; i++)
 								{
@@ -218,14 +230,35 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 									}
 								}
 
+								var idValue = row.cells[iDCol].qText;
+
+								if(idValue == '-'){
+									//idValue = row.cells[nameCol].qText;
+									error = true;
+									errors.push('No _MasterItemID - Add MasterItemID to source data');
+								}
+
+								var descValue = row.cells[descCol].qText;
+								if(descValue == '-'){
+									descValue = '';
+								}
+
 								var tagsList = row.cells[tagCol].qText.split(";");
-								tagsList.push(row.cells[iDCol].qText);
+								tagsList = tagsList.filter(a => a !== '-');
+								tagsList.push(idValue);
 
 								var rowDisplay = row.cells[typeCol].qText;
+
+								if(!(rowDisplay == 'Dimension' || rowDisplay == 'Measure')){
+									error = true;
+									errors.push("_MasterItemType does not match either 'Dimension' or 'Measure'")
+								}
+
+
 								if(fieldsList.length > 1 && rowDisplay == "Dimension"){
 									rowDisplay = "Drill-down Dimension"
 								}
-								var prevProcessed = 'P';
+								var prevProcessed = 'Pending';
 								if(typeof $scope.input.masterScriptListInternal[rowNum] != 'undefined'){
 									prevProcessed = $scope.input.masterScriptListInternal[rowNum].processed;
 								}
@@ -235,14 +268,21 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 									rowType: row.cells[typeCol].qText,
 									rowDisplayType: rowDisplay,
 									displayName: row.cells[nameCol].qText,
-									description: row.cells[descCol].qText,
+									description: descValue,
 									color: row.cells[colorCol].qText,
 									fields: fieldsList,
 									tags: tagsList,
-									msId: row.cells[iDCol].qText,
+									msId: idValue,
 									status: "Pending",
-									processed: prevProcessed
+									processed: prevProcessed,
+									error: error,
+									errors: errors
 								};
+
+								if(itemData.error){
+									itemData.status = "Error";
+									itemData.processed = "";
+								}
 
 								$scope.input.masterScriptListInternal[rowNum] = itemData;
 								$scope.checkDim(itemData);
@@ -256,46 +296,50 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 						};
 
 						$scope.checkDim = function(t){
-							var check = false;
-							$scope.input.dimList.forEach(function(dim){
-								//console.log(dim);
+							if(!t.error){
+								var check = false;
+								$scope.input.dimList.forEach(function(dim){
+									//console.log(dim);
 
-								if(t.msId == dim.qMeta.masterScriptId){
-									console.log("Dim Already Exists: " + t.msId + " " + dim.qMeta.masterScriptId);
-									t.qId = dim.qInfo.qId;
-									check = true;
-									//console.log(t);
-								}
-							});
-							if(t.rowType == "Dimension"){
-								if(check){
-									t.status = "Exists";
-								}else{
-									t.status = "Not Created";
+									if(t.msId == dim.qMeta.masterScriptId){
+										console.log("Dim Already Exists: " + t.msId + " " + dim.qMeta.masterScriptId);
+										t.qId = dim.qInfo.qId;
+										check = true;
+										//console.log(t);
+									}
+								});
+								if(t.rowType == "Dimension"){
+									if(check){
+										t.status = "Exists";
+									}else{
+										t.status = "Not Created";
+									}
 								}
 							}
 							return check;
 						};
 
 						$scope.checkMes = function(t){
-							var check = false;
-							$scope.input.mesList.forEach(function(mes){
-								//console.log(dim);
+							if(!t.error){
+									var check = false;
+									$scope.input.mesList.forEach(function(mes){
+										//console.log(dim);
 
-								if(t.msId == mes.qMeta.masterScriptId){
-									console.log("Measure Already Exists: " + t.msId + " " + mes.qMeta.masterScriptId);
-									t.qId = mes.qInfo.qId;
-									check = true;
-								}
-							});
-							if(t.rowType == "Measure"){
-								if(check){
-									t.status = "Exists";
-								}else{
-									t.status = "Not Created";
-								}
-							}
+										if(t.msId == mes.qMeta.masterScriptId){
+											console.log("Measure Already Exists: " + t.msId + " " + mes.qMeta.masterScriptId);
+											t.qId = mes.qInfo.qId;
+											check = true;
+										}
+									});
+									if(t.rowType == "Measure"){
+										if(check){
+											t.status = "Exists";
+										}else{
+											t.status = "Not Created";
+										}
+									}
 
+								}
 							return check;
 						};
 
@@ -335,19 +379,21 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 								}
 							};
 
+							if(!t.error){
 							if($scope.checkDim(t)){
 								if(shouldCreate){
 									return $scope.input.appModel.getDimension(t.qId).then((data) => {
 										data.setProperties(dimJSON);
-										t.processed = "U";
+										t.processed = "Updated";
 									 });
 								}
 							}else{
 								if(shouldCreate){
 									return $scope.input.appModel.createDimension(dimJSON).then((data) => {
-										t.processed = "C";
+										t.processed = "Created";
 									});
 								}
+							}
 							}
 						};
 
@@ -379,19 +425,21 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 								}
 							};
 
-							if($scope.checkMes(t)){
-								console.log("Updating: "+ t.qId);
-								return $scope.input.appModel.getMeasure(t.qId).then((data) => {
-									console.log("Updating Measure");
-									console.log(data);
-									data.setProperties(mesJSON);
-									t.processed = "U";
-								 });
-							}else{
-								if(shouldCreate){
-									return $scope.input.appModel.createMeasure(mesJSON).then((data) => {
-										t.processed = "C";
-									});
+							if(!t.error){
+								if($scope.checkMes(t)){
+									console.log("Updating: "+ t.qId);
+									return $scope.input.appModel.getMeasure(t.qId).then((data) => {
+										console.log("Updating Measure");
+										console.log(data);
+										data.setProperties(mesJSON);
+										t.processed = "Updated";
+									 });
+								}else{
+									if(shouldCreate){
+										return $scope.input.appModel.createMeasure(mesJSON).then((data) => {
+											t.processed = "Created";
+										});
+									}
 								}
 							}
 						};

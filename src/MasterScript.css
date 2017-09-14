@@ -193,7 +193,7 @@
 }
 
 .column3 {
-  width:45%;
+  width:35%;
   float:left;
   clear:none;
 }
@@ -227,6 +227,7 @@
   height: 16px;
   border-radius: 8px;
   margin:0 auto;
+  border:1px solid #CCCCCC;
 }
 
 .fieldoval {
@@ -249,4 +250,22 @@
 
 .hidden {
   display: none;
+}
+
+.errorList {
+  clear: both;
+  width: 100%;
+  margin-top: 40px;
+  box-sizing: border-box;
+}
+
+.errorList li {
+  font-weight: bold;
+  list-style-type: none;
+  border-radius: 5px;
+  margin-bottom: 5px;
+  background-color: #f05555;
+  padding-left:10px;
+  padding-right: 10px;
+  color: #ffffff;
 }

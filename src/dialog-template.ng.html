@@ -12,6 +12,7 @@
 			<span class="column3">Expression</span>
 			<span class="column4">Color</span>
 			<span class="column5">Status</span>
+			<span class="column5">Import</span>
 		</span>
   </li>
   <li ng-repeat="row in input.masterScriptListInternal" class="lui-list__item rowHeight">
@@ -21,8 +22,14 @@
 			<div class="column3">
 				<div ng-repeat="field in row.fields" class="fieldoval">{{field}}</div>
 			</div>
-			<div class="column4"><div class="colorDisc" style="background-color:{{row.color}}"></div></div>
-			<div class="column5">{{row.status}} {{row.processed}}</div>
+			<div class="column4"><div ng-if="row.color == '-'">&nbsp;</div><div ng-if="row.color != '-'" class="colorDisc" style="background-color:{{row.color}}">&nbsp;</div></div>
+			<div class="column5">{{row.status}}</div>
+			<div class="column5">{{row.processed}}</div>
+			<div class="errorList" ng-if="row.error">
+				<ul>
+					<li ng-repeat="error in row.errors"><span class="lui-bg-danger">{{error}}</span></li>
+				</ul>
+			</div>
 		</span>
   </li>
 </ul>
