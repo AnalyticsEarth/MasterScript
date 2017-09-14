@@ -9,7 +9,7 @@ MasterScript is a utility to easily import Qlik Sense master items from an exter
 1. Open MasterScript
 1. Click "Import Master Items"
 1. Check the status
-1. Delete the MasterScript extention from your application sheet
+1. Delete the MasterScript extension from your application sheet
 1. Build your application
 
 ## Loading metadata
@@ -36,3 +36,10 @@ The fields have a "_" prefix so this can be combined with the ___set HidePrefix 
   * The Field name or expression for the measure or dimension
 * _MasterItemExpression(2...n)
   * Additional fields, when required for a Drill-down Dimension should be added as extra columns using a sequential number in the field title
+
+## Once Imported
+When you have imported, the extension can be deleted, you can also remove the data table from your script too. If you need to update the master items, just load the extension again (if you have deleted it from the sheet) and update from the source data.
+
+The master items will be updated based upon the _MasterItemID column.
+
+There are no dependencies in your app for the extension, or when you share the application for the recipient server to have MasterScript installed. This is just used to importing master items.
