@@ -2,7 +2,7 @@
 	"name": "MasterScript",
 	"description": "Create Master Items from a table in your data model",
 	"type": "visualization",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"icon": "library",
 	"author": "Steven Pressland",
 	"homepage": "https://github.com/AnalyticsEarth/MasterScript",

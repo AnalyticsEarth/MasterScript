@@ -59,7 +59,8 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 						buttonTitle: 'Preview Master Items',
 						buttonIcon: 'view',
 						warningMessage: '',
-						masterScriptListInternal: []
+						masterScriptListInternal: [],
+						tableReady: false
 					},
 					controller: ['$scope', function( $scope ) {
 						console.log($scope);
@@ -67,6 +68,26 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 						/* Get current Qlik App and field list */
 						var app = qlik.currApp(this);
 
+						app.getList("FieldList", function(reply){
+							console.log(reply);
+							$scope.input.fieldList = reply.qFieldList.qItems.filter(a => a.qName.substring(0,11) == '_MasterItem').map(a => a.qName);
+							console.log($scope.input.fieldList);
+
+							if(typeof $scope.input.fieldList != 'undefined'){
+								$scope.input.masterScriptList = app.createTable(
+									$scope.input.fieldList,
+									[{qDef:{qLabel:"_KeyCount",qDef:"count(TOTAL <_MasterItemID> _MasterItemID)"}}],
+									{rows:200}
+								);
+
+								var listener = function() {
+									$scope.processItems();
+				 				};
+				 				$scope.input.masterScriptList.OnData.bind( listener ); //bind the listener
+								$scope.input.tableReady = true;
+							}
+
+						});
 
 
 						/* Set the default tab and create the function which will allow for
@@ -141,24 +162,10 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 						//console.log("Session Object");
 						//console.log($scope.input.DimListObj);
 
-						$scope.input.masterScriptList = app.createTable([
-							"_MasterItemID",
-							"_MasterItemType",
-							"_MasterItemName",
-							"_MasterItemDescription",
-							"_MasterItemColor",
-							"_MasterItemTags",
-							"_MasterItemExpression1",
-							"_MasterItemExpression2",
-							"_MasterItemExpression3",
-							"_MasterItemExpression4",
-							"_MasterItemExpression5"]
-						, [{qDef:{qLabel:"_KeyCount",qDef:"count(TOTAL <_MasterItemID> _MasterItemID)"}}],{rows:200});
 
-						var listener = function() {
-							$scope.processItems();
-		 				};
-		 				$scope.input.masterScriptList.OnData.bind( listener ); //bind the listener
+
+
+
 
 
 
@@ -194,101 +201,103 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 						};
 
 						$scope.processItems = function(){
+							if($scope.input.tableReady){
+								var table = $scope.input.masterScriptList;
 
-							var table = $scope.input.masterScriptList;
+								var iDCol = table.getColByName('_MasterItemID');
+								var typeCol = table.getColByName('_MasterItemType');
+								var nameCol = table.getColByName('_MasterItemName');
+								var descCol = table.getColByName('_MasterItemDescription');
+								var colorCol = table.getColByName('_MasterItemColor');
+								var tagCol = table.getColByName('_MasterItemTags');
+								var countCol = table.getColByName('_KeyCount');
 
-							var iDCol = table.getColByName('_MasterItemID');
-							var typeCol = table.getColByName('_MasterItemType');
-							var nameCol = table.getColByName('_MasterItemName');
-							var descCol = table.getColByName('_MasterItemDescription');
-							var colorCol = table.getColByName('_MasterItemColor');
-							var tagCol = table.getColByName('_MasterItemTags');
-							var countCol = table.getColByName('_KeyCount');
+								$scope.input.masterScriptList.rows.forEach(function(row, rowNum) {
+	    						//console.log(row);
+									var error = false;
+									var errors = [];
+									var fieldsList = [];
 
-							$scope.input.masterScriptList.rows.forEach(function(row, rowNum) {
-    						//console.log(row);
-								var error = false;
-								var errors = [];
-								var fieldsList = [];
-
-								if(row.cells[countCol].qNum > 1){
-									error = true;
-									errors.push("Duplicate _MasterItemID Found");
-								}
-
-								if(row.cells[countCol].qNum == 0){
-									error = true;
-									errors.push("MIssing _MasterItemID Value");
-								}
-
-								for(var i = 1; i <= 10; i++)
-								{
-									var expCol = table.getColByName('_MasterItemExpression'+i);
-									var cell = row.cells[expCol];
-									if(cell && cell.qElemNumber >= 0){
-										fieldsList.push(cell.qText);
+									if(row.cells[countCol].qNum > 1){
+										error = true;
+										errors.push("Duplicate _MasterItemID Found");
 									}
-								}
 
-								var idValue = row.cells[iDCol].qText;
+									if(row.cells[countCol].qNum == 0){
+										error = true;
+										errors.push("MIssing _MasterItemID Value");
+									}
 
-								if(idValue == '-'){
-									//idValue = row.cells[nameCol].qText;
-									error = true;
-									errors.push('No _MasterItemID - Add MasterItemID to source data');
-								}
+									for(var i = 1; i <= 10; i++)
+									{
+										var expCol = table.getColByName('_MasterItemExpression'+i);
+										var cell = row.cells[expCol];
+										if(cell && cell.qElemNumber >= 0){
+											fieldsList.push(cell.qText);
+										}
+									}
 
-								var descValue = row.cells[descCol].qText;
-								if(descValue == '-'){
-									descValue = '';
-								}
+									var idValue = row.cells[iDCol].qText;
 
-								var tagsList = row.cells[tagCol].qText.split(";");
-								tagsList = tagsList.filter(a => a !== '-');
-								tagsList.push(idValue);
+									if(idValue == '-'){
+										//idValue = row.cells[nameCol].qText;
+										error = true;
+										errors.push('No _MasterItemID - Add MasterItemID to source data');
+									}
 
-								var rowDisplay = row.cells[typeCol].qText;
+									var descValue = row.cells[descCol].qText;
+									if(descValue == '-'){
+										descValue = '';
+									}
 
-								if(!(rowDisplay == 'Dimension' || rowDisplay == 'Measure')){
-									error = true;
-									errors.push("_MasterItemType does not match either 'Dimension' or 'Measure'")
-								}
+									var tagsList = row.cells[tagCol].qText.split(";");
+									tagsList = tagsList.filter(a => a !== '-');
+									tagsList.push(idValue);
+
+									var rowDisplay = row.cells[typeCol].qText;
+
+									if(!(rowDisplay == 'Dimension' || rowDisplay == 'Measure')){
+										error = true;
+										errors.push("_MasterItemType does not match either 'Dimension' or 'Measure'")
+									}
 
 
-								if(fieldsList.length > 1 && rowDisplay == "Dimension"){
-									rowDisplay = "Drill-down Dimension"
-								}
-								var prevProcessed = 'Pending';
-								if(typeof $scope.input.masterScriptListInternal[rowNum] != 'undefined'){
-									prevProcessed = $scope.input.masterScriptListInternal[rowNum].processed;
-								}
+									if(fieldsList.length > 1 && rowDisplay == "Dimension"){
+										rowDisplay = "Drill-down Dimension"
+									}
+									var prevProcessed = 'Pending';
+									if(typeof $scope.input.masterScriptListInternal[rowNum] != 'undefined'){
+										prevProcessed = $scope.input.masterScriptListInternal[rowNum].processed;
+									}
 
-								var itemData = {
-									rowNumber:rowNum,
-									rowType: row.cells[typeCol].qText,
-									rowDisplayType: rowDisplay,
-									displayName: row.cells[nameCol].qText,
-									description: descValue,
-									color: row.cells[colorCol].qText,
-									fields: fieldsList,
-									tags: tagsList,
-									msId: idValue,
-									status: "Pending",
-									processed: prevProcessed,
-									error: error,
-									errors: errors
-								};
+									var itemData = {
+										rowNumber:rowNum,
+										rowType: row.cells[typeCol].qText,
+										rowDisplayType: rowDisplay,
+										displayName: row.cells[nameCol].qText,
+										description: descValue,
+										color: row.cells[colorCol].qText,
+										fields: fieldsList,
+										tags: tagsList,
+										msId: idValue,
+										status: "Pending",
+										processed: prevProcessed,
+										error: error,
+										errors: errors
+									};
 
-								if(itemData.error){
-									itemData.status = "Error";
-									itemData.processed = "";
-								}
+									if(itemData.error){
+										itemData.status = "Error";
+										itemData.processed = "";
+									}
 
-								$scope.input.masterScriptListInternal[rowNum] = itemData;
-								$scope.checkDim(itemData);
-								$scope.checkMes(itemData);
+									$scope.input.masterScriptListInternal[rowNum] = itemData;
+									$scope.checkDim(itemData);
+									$scope.checkMes(itemData);
 
-							});
+								});
+							}
+
 
 							//console.log("Complete");
 							//console.log($scope.input.masterScriptListInternal);
