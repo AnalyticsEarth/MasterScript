@@ -20,7 +20,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 		paint: function ($element,layout){
 
 			layout.navmode = qlik.navigation.getMode();
-			console.log($element);
+			//console.log($element);
 
 			if(layout.navmode == 'analysis'){
 				$("#launchButton").removeClass("hidden").addClass("hidden");
@@ -32,7 +32,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 		controller: ['$scope','luiDialog', function ( $scope, luiDialog) {
 
 
-			console.log($scope);
+			//console.log($scope);
 
 			$scope.processButton = function($event){
 
@@ -63,24 +63,32 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 						tableReady: false
 					},
 					controller: ['$scope', function( $scope ) {
-						console.log($scope);
+						//console.log($scope);
 
 						/* Get current Qlik App and field list */
 						var app = qlik.currApp(this);
 
-						app.getList("FieldList", function(reply){
-							console.log(reply);
+						//app.getList("FieldList", function(reply){
+						app.createGenericObject({
+								qFieldListDef:{
+									qShowHidden:true
+								}}, function(reply){
+							//console.log("Field List");
+							//console.log(reply);
 							$scope.input.fieldList = reply.qFieldList.qItems.filter(a => a.qName.substring(0,11) == '_MasterItem').map(a => a.qName);
-							console.log($scope.input.fieldList);
+							//console.log($scope.input.fieldList);
 
 							if(typeof $scope.input.fieldList != 'undefined'){
+								var rowCount = Math.floor(10000 / ($scope.input.fieldList.length + 1));
+								//console.log(rowCount);
 								$scope.input.masterScriptList = app.createTable(
 									$scope.input.fieldList,
 									[{qDef:{qLabel:"_KeyCount",qDef:"count(TOTAL <_MasterItemID> _MasterItemID)"}}],
-									{rows:200}
+									{rows:rowCount}
 								);
 
 								var listener = function() {
+
 									$scope.processItems();
 				 				};
 				 				$scope.input.masterScriptList.OnData.bind( listener ); //bind the listener
@@ -201,9 +209,9 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 						};
 
 						$scope.processItems = function(){
-							if($scope.input.tableReady){
+							if($scope.input.tableReady && $scope.input.masterScriptList.colCount > 1){
 								var table = $scope.input.masterScriptList;
-
+								//console.log(table);
 								var iDCol = table.getColByName('_MasterItemID');
 								var typeCol = table.getColByName('_MasterItemType');
 								var nameCol = table.getColByName('_MasterItemName');
@@ -211,6 +219,10 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 								var colorCol = table.getColByName('_MasterItemColor');
 								var tagCol = table.getColByName('_MasterItemTags');
 								var countCol = table.getColByName('_KeyCount');
+								var accumulateCol = table.getColByName('_MasterItemAccumulate');
+								//console.log("Accumulate Column: " + accumulateCol);
+
+
 
 								$scope.input.masterScriptList.rows.forEach(function(row, rowNum) {
 	    						//console.log(row);
@@ -237,7 +249,10 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 										}
 									}
 
-									var idValue = row.cells[iDCol].qText;
+									var idValue;
+									if(typeof row.cells[iDCol] != 'undefined'){
+									 	idValue = row.cells[iDCol].qText;
+									}
 
 									if(idValue == '-'){
 										//idValue = row.cells[nameCol].qText;
@@ -245,16 +260,49 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 										errors.push('No _MasterItemID - Add MasterItemID to source data');
 									}
 
-									var descValue = row.cells[descCol].qText;
+									var descValue;
+									if(typeof row.cells[descCol] != 'undefined'){
+									 	descValue = row.cells[descCol].qText;
+									}
 									if(descValue == '-'){
 										descValue = '';
 									}
 
-									var tagsList = row.cells[tagCol].qText.split(";");
-									tagsList = tagsList.filter(a => a !== '-');
-									tagsList.push(idValue);
 
-									var rowDisplay = row.cells[typeCol].qText;
+									var tagsList = [];
+									if(typeof row.cells[tagCol] != 'undefined'){
+										tagsList = row.cells[tagCol].qText.split(";");
+										tagsList = tagsList.filter(a => a !== '-');
+										tagsList.push(idValue);
+									}
+
+
+
+									var accumulateValue = 0;
+									if(typeof accumulateCol != 'undefined'){
+										accumulateValue = parseInt(row.cells[accumulateCol].qText);
+										if(accumulateValue == '-'){
+											accumulateValue = 0;
+										}
+									}
+									//console.log("Accumulate Value: " + accumulateValue);
+
+									//Set Accumulation Tag
+									switch(accumulateValue){
+										case 0:
+											//tagsList.push('Accumulate: ' + );
+											break;
+										case 1:
+											tagsList.push('Full Accumulation');
+											break;
+										default:
+											tagsList.push('Accumulate ' + accumulateValue + ' Periods');
+									}
+
+									var rowDisplay;
+									if(typeof row.cells[typeCol] != 'undefined'){
+										rowDisplay = row.cells[typeCol].qText;
+									}
 
 									if(!(rowDisplay == 'Dimension' || rowDisplay == 'Measure')){
 										error = true;
@@ -277,6 +325,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 										displayName: row.cells[nameCol].qText,
 										description: descValue,
 										color: row.cells[colorCol].qText,
+										accumulate:accumulateValue,
 										fields: fieldsList,
 										tags: tagsList,
 										msId: idValue,
@@ -311,7 +360,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 									//console.log(dim);
 
 									if(t.msId == dim.qMeta.masterScriptId){
-										console.log("Dim Already Exists: " + t.msId + " " + dim.qMeta.masterScriptId);
+										//console.log("Dim Already Exists: " + t.msId + " " + dim.qMeta.masterScriptId);
 										t.qId = dim.qInfo.qId;
 										check = true;
 										//console.log(t);
@@ -335,7 +384,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 										//console.log(dim);
 
 										if(t.msId == mes.qMeta.masterScriptId){
-											console.log("Measure Already Exists: " + t.msId + " " + mes.qMeta.masterScriptId);
+											//console.log("Measure Already Exists: " + t.msId + " " + mes.qMeta.masterScriptId);
 											t.qId = mes.qInfo.qId;
 											check = true;
 										}
@@ -408,6 +457,8 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 
 						/* Create Measure */
 						$scope.createMeasure = function(t, shouldCreate){
+							//qAccumulate:t.accumulate,
+							//qRelative: true,
 							var mesJSON =
 							{
 								qInfo: {
@@ -436,10 +487,10 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 
 							if(!t.error){
 								if($scope.checkMes(t)){
-									console.log("Updating: "+ t.qId);
+									//console.log("Updating: "+ t.qId);
 									return $scope.input.appModel.getMeasure(t.qId).then((data) => {
-										console.log("Updating Measure");
-										console.log(data);
+										//console.log("Updating Measure");
+										//console.log(data);
 										data.setProperties(mesJSON);
 										t.processed = "Updated";
 									 });
@@ -452,7 +503,6 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 								}
 							}
 						};
-
 					}]
 				});
 			}
