@@ -32,6 +32,8 @@ The fields have a "_" prefix so this can be combined with the ___set HidePrefix 
   * The HEX code to define the master items color. Must be in the format of "#000000"
 * _MasterItemTags
   * A list of tags to be applied to the master item. tags should be listed using the ";" as a delimiter
+* _MasterItemLabel
+    * The label expression to be displayed on chart axis when using the master item (Qlik Sense September 2017 Onwards)
 * _MasterItemExpression1
   * The Field name or expression for the measure or dimension
 * _MasterItemExpression(2...n)

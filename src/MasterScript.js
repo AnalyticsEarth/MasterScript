@@ -219,7 +219,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 								var colorCol = table.getColByName('_MasterItemColor');
 								var tagCol = table.getColByName('_MasterItemTags');
 								var countCol = table.getColByName('_KeyCount');
-								var accumulateCol = table.getColByName('_MasterItemAccumulate');
+								var labelExpCol = table.getColByName('_MasterItemLabel');
 								//console.log("Accumulate Column: " + accumulateCol);
 
 
@@ -237,7 +237,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 
 									if(row.cells[countCol].qNum == 0){
 										error = true;
-										errors.push("MIssing _MasterItemID Value");
+										errors.push("Missing _MasterItemID Value");
 									}
 
 									for(var i = 1; i <= 10; i++)
@@ -276,32 +276,17 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 										tagsList.push(idValue);
 									}
 
-
-
-									var accumulateValue = 0;
-									if(typeof accumulateCol != 'undefined'){
-										accumulateValue = parseInt(row.cells[accumulateCol].qText);
-										if(accumulateValue == '-'){
-											accumulateValue = 0;
-										}
-									}
-									//console.log("Accumulate Value: " + accumulateValue);
-
-									//Set Accumulation Tag
-									switch(accumulateValue){
-										case 0:
-											//tagsList.push('Accumulate: ' + );
-											break;
-										case 1:
-											tagsList.push('Full Accumulation');
-											break;
-										default:
-											tagsList.push('Accumulate ' + accumulateValue + ' Periods');
-									}
-
 									var rowDisplay;
 									if(typeof row.cells[typeCol] != 'undefined'){
 										rowDisplay = row.cells[typeCol].qText;
+									}
+
+									var labelExp = '';
+									if(typeof row.cells[labelExpCol] != 'undefined'){
+										labelExp = row.cells[labelExpCol].qText;
+										if(labelExp == '-'){
+											labelExp = '';
+										}
 									}
 
 									if(!(rowDisplay == 'Dimension' || rowDisplay == 'Measure')){
@@ -325,7 +310,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 										displayName: row.cells[nameCol].qText,
 										description: descValue,
 										color: row.cells[colorCol].qText,
-										accumulate:accumulateValue,
+										labelExpression: labelExp,
 										fields: fieldsList,
 										tags: tagsList,
 										msId: idValue,
@@ -427,6 +412,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 									qFieldDefs: t.fields,
 									qFieldLabels: t.fields,
 									title:t.displayName,
+									qLabelExpression:t.labelExpression,
 									coloring: colorBlock
 								},
 								qMetaDef: {
@@ -470,6 +456,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 									qDef: t.fields[0],
 									qExpressions:[],
 									qActiveExpression: 0,
+									qLabelExpression:t.labelExpression,
 									coloring: {
 										baseColor: {
 											color: t.color,
