@@ -443,8 +443,17 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 
 						/* Create Measure */
 						$scope.createMeasure = function(t, shouldCreate){
-							//qAccumulate:t.accumulate,
-							//qRelative: true,
+							var colorBlock = {}
+
+							if(t.color != "-"){
+								colorBlock = {
+									baseColor: {
+										color: t.color,
+										index: -1
+									}
+								};
+							}
+
 							var mesJSON =
 							{
 								qInfo: {
@@ -457,12 +466,7 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, s
 									qExpressions:[],
 									qActiveExpression: 0,
 									qLabelExpression:t.labelExpression,
-									coloring: {
-										baseColor: {
-											color: t.color,
-											index: -1
-										}
-									}
+									coloring:colorBlock
 								},
 								qMetaDef: {
 									title:t.displayName,
