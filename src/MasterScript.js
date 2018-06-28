@@ -3,11 +3,9 @@ define( [ "qlik",
 './definition',
 'text!./dialog-template.ng.html',
 'css!./MasterScript.css',
-'util',
-'enigma',
-'text!./schema.json'
+'util'
 ],
-function ( qlik, template, definition, dialogTemplate, cssStyle, Util, enigma, schema) {
+function ( qlik, template, definition, dialogTemplate, cssStyle, Util) {
 	'use strict';
 	return {
 		support : {
