@@ -410,7 +410,8 @@ function ( qlik, template, definition, dialogTemplate, cssStyle, Util) {
 									qFieldDefs: t.fields,
 									qFieldLabels: t.fields,
 									title:t.displayName,
-									qLabelExpression:t.labelExpression,
+									// qLabelExpression:t.labelExpression,
+									qLabelExpression:`='${t.displayName}'`,
 									coloring: colorBlock
 								},
 								qMetaDef: {
